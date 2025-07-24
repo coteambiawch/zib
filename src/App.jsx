@@ -1,10 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
-
-
 
 const supabaseUrl = 'https://frskdsglexjeehahmiow.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyc2tkc2dsZXhqZWVoYWhtaW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzODk4NzcsImV4cCI6MjA2ODk2NTg3N30.3ObYpFwg7WfYUy5KCzJfrLlAxJGTvoSlqnSeCAEOSnQ';
@@ -14,6 +11,7 @@ function App() {
   const [text, setText] = useState("");
   const [dialogs, setDialogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState(""); // <-- search state
 
   // Fetch dialogs from Supabase on mount and subscribe to realtime changes
   useEffect(() => {
@@ -54,6 +52,11 @@ function App() {
       }
     }
   };
+
+  // Filter dialogs based on search
+  const filteredDialogs = dialogs.filter(d =>
+    d.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div style={{
@@ -110,7 +113,7 @@ function App() {
         <button
           onClick={handleAdd}
           style={{
-            marginBottom: 28,
+            marginBottom: 16,
             padding: '14px 0',
             width: '100%',
             borderRadius: 8,
@@ -125,14 +128,63 @@ function App() {
             letterSpacing: '0.5px',
           }}
         >Add</button>
+        <button
+          onClick={async () => {
+            if (
+              window.confirm(
+                'Are you sure you want to delete all dialogs? This cannot be undone.'
+              )
+            ) {
+              await supabase.from('dialogs').delete().neq('id', 0);
+              setDialogs([]);
+            }
+          }}
+          style={{
+            marginBottom: 28,
+            padding: '14px 0', // Match Add button padding
+            width: '100%',
+            borderRadius: 8,
+            border: 'none',
+            background: 'linear-gradient(90deg, #f87171 0%, #fbbf24 100%)',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 18, // Match Add button font size
+            boxShadow: '0 2px 8px 0 rgba(251, 191, 36, 0.10)',
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+            letterSpacing: '0.5px',
+          }}
+        >Reset All</button>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search dialogs..."
+          style={{
+            width: '100%',
+            marginBottom: 18,
+            padding: '12px 0px',
+            borderRadius: 8,
+            border: '1.5px solid #6366f1',
+            fontSize: 16,
+            background: '#f4f7fe',
+            color: '#222',
+            outline: 'none',
+            boxShadow: '0 2px 8px 0 rgba(99, 102, 241, 0.08)',
+            transition: 'border 0.2s, box-shadow 0.2s',
+            marginTop: 4,
+            fontWeight: 500,
+            letterSpacing: '0.2px',
+          }}
+        />
         <div>
           {loading ? (
             <p style={{ color: '#888', textAlign: 'center' }}>Loading...</p>
-          ) : dialogs.length === 0 ? (
-            <p style={{ color: '#888', textAlign: 'center' }}>No dialogs saved yet.</p>
+          ) : filteredDialogs.length === 0 ? (
+            <p style={{ color: '#888', textAlign: 'center' }}>No dialogs found.</p>
           ) : (
             <AnimatePresence>
-              {dialogs.map((dialog, idx) => (
+              {filteredDialogs.map((dialog, idx) => (
                 <motion.div
                   key={dialog + idx}
                   initial={{ opacity: 0, y: 20 }}
@@ -151,6 +203,7 @@ function App() {
                     fontWeight: 500,
                     wordBreak: 'break-word',
                     touchAction: 'manipulation',
+                    whiteSpace: 'pre-wrap',
                   }}
                 >
                   {dialog}
@@ -164,4 +217,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
