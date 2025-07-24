@@ -67,9 +67,10 @@ function App() {
       justifyContent: 'center',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
       fontFamily: 'Inter, system-ui, sans-serif',
-      padding: 0,
+      padding: '3rem 0', // Add top and bottom padding
       position: 'relative',
       overflow: 'hidden',
+      boxSizing: 'border-box',
     }}>
       {/* Background decorative elements */}
       <div style={{
@@ -108,33 +109,37 @@ function App() {
       }} />
       <div style={{
         width: '100%',
-        maxWidth: 560,
-        padding: '2rem',
-        borderRadius: 24,
+        maxWidth: window.innerWidth <= 480 ? '95%' : window.innerWidth <= 768 ? '90%' : 560,
+        maxHeight: 'calc(100vh - 6rem)', // Constrain height to viewport minus padding
+        display: 'flex',
+        flexDirection: 'column',
+        padding: window.innerWidth <= 480 ? '1.5rem' : window.innerWidth <= 768 ? '1.75rem' : '2rem',
+        borderRadius: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 20 : 24,
         background: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(20px)',
         boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.3)',
         border: '1px solid rgba(255, 255, 255, 0.2)',
-        margin: '0 1rem',
+        margin: window.innerWidth <= 480 ? '0 0.5rem' : '0 1rem',
         position: 'relative',
+        overflow: 'hidden', // Hide overflow on the container
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 32,
-          gap: 12,
+          marginBottom: window.innerWidth <= 480 ? 24 : window.innerWidth <= 768 ? 28 : 32,
+          gap: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
         }}>
           <div style={{
-            width: 48,
-            height: 48,
+            width: window.innerWidth <= 480 ? 40 : window.innerWidth <= 768 ? 44 : 48,
+            height: window.innerWidth <= 480 ? 40 : window.innerWidth <= 768 ? 44 : 48,
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontSize: 24,
+            fontSize: window.innerWidth <= 480 ? 20 : window.innerWidth <= 768 ? 22 : 24,
             fontWeight: 'bold',
             boxShadow: '0 8px 20px rgba(102, 126, 234, 0.3)',
           }}>
@@ -142,12 +147,12 @@ function App() {
           </div>
           <h2 style={{
             fontWeight: 800,
-            fontSize: 32,
+            fontSize: window.innerWidth <= 480 ? 24 : window.innerWidth <= 768 ? 28 : 32,
             margin: 0,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            letterSpacing: '-1.5px',
+            letterSpacing: window.innerWidth <= 480 ? '-1px' : window.innerWidth <= 768 ? '-1.25px' : '-1.5px',
           }}>Dialog Saver</h2>
         </div>
         <div style={{
@@ -192,14 +197,14 @@ function App() {
           onClick={handleAdd}
           style={{
             marginBottom: 16,
-            padding: '14px 0',
+            padding: window.innerWidth <= 480 ? '16px 0' : window.innerWidth <= 768 ? '18px 0' : '20px 0',
             width: '100%',
-            borderRadius: 12,
+            borderRadius: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
             border: 'none',
             background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
             color: '#fff',
             fontWeight: 600,
-            fontSize: 18,
+            fontSize: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 17 : 18,
             boxShadow: '0 4px 16px rgba(99, 102, 241, 0.2)',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
@@ -233,14 +238,14 @@ function App() {
           }}
           style={{
             marginBottom: 28,
-            padding: '14px 0', // Match Add button padding
+            padding: window.innerWidth <= 480 ? '16px 0' : window.innerWidth <= 768 ? '18px 0' : '20px 0',
             width: '100%',
-            borderRadius: 12,
+            borderRadius: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
             border: 'none',
             background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
             color: '#fff',
             fontWeight: 600,
-            fontSize: 18, // Match Add button font size
+            fontSize: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 17 : 18,
             boxShadow: '0 4px 16px rgba(239, 68, 68, 0.2)',
             cursor: 'pointer',
             transition: 'all 0.3s ease',
@@ -269,10 +274,10 @@ function App() {
           style={{
             width: '100%',
             marginBottom: 18,
-            padding: '12px 20px',
-            borderRadius: 12,
+            padding: window.innerWidth <= 480 ? '10px 16px' : window.innerWidth <= 768 ? '11px 18px' : '12px 20px',
+            borderRadius: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
             border: '2px solid #e2e8f0',
-            fontSize: 16,
+            fontSize: window.innerWidth <= 480 ? 14 : window.innerWidth <= 768 ? 15 : 16,
             background: '#f8fafc',
             color: '#1e293b',
             outline: 'none',
@@ -292,7 +297,16 @@ function App() {
             e.target.style.background = '#f8fafc';
           }}
         />
-        <div>
+        <div style={{
+          flex: 1, // Take remaining space
+          overflowY: 'auto', // Enable vertical scrolling
+          paddingRight: '8px', // Space for scrollbar
+          marginRight: '-8px', // Offset scrollbar padding
+          borderRadius: 16, // Add border radius to the dialog list container
+          background: 'rgba(248, 250, 252, 0.5)', // Subtle background
+          padding: '12px 20px 12px 12px', // Padding inside the container
+          border: '1px solid rgba(226, 232, 240, 0.8)', // Light border
+        }}>
           {loading ? (
             <div style={{ 
               color: '#6b7280', 

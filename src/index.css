@@ -70,6 +70,10 @@ button {
   cursor: pointer;
   transition: var(--transition);
   box-shadow: var(--shadow-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 button:hover {
@@ -117,6 +121,31 @@ textarea:focus {
 ::selection {
   background: rgba(99, 102, 241, 0.2);
   color: #1e293b;
+}
+
+/* Responsive button styles */
+@media (max-width: 768px) {
+  button {
+    padding: 16px 20px;
+    font-size: 16px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  button {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 /* Smooth scrolling */
