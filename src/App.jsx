@@ -270,23 +270,39 @@ function App() {
     if (text.trim() === "" && !imageFile) return;
     if (!user) return;
     
-    // Handle anonymous users - add to local state only (temporary session dialogs)
+    // Handle anonymous users - save to database with user_id 'anonymous-user'
     if (user.isAnonymous) {
-      const newDialog = {
-        id: 'temp-' + Date.now().toString(), // Temporary ID to distinguish from database dialogs
-        text: text.trim(),
-        image_url: null, // Skip image upload for anonymous users
-        created_at: new Date().toISOString(),
-        user_id: 'anonymous-session',
-        user_name: 'Anonymous (You)',
-        isTemporary: true // Flag to identify temporary dialogs
-      };
-      
-      // Add to the beginning of existing dialogs (mix with database dialogs)
-      setDialogs([newDialog, ...dialogs]);
-      setText("");
-      setImageFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      let image_url = null;
+      // Optionally, allow image upload for anonymous users
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `anonymous-user/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage.from(BUCKET).upload(fileName, imageFile);
+        if (uploadError) {
+          alert('Image upload failed.');
+          return;
+        }
+        image_url = supabase.storage.from(BUCKET).getPublicUrl(fileName).data.publicUrl;
+      }
+      const { data, error } = await supabase
+        .from('demo-dialogs')
+        .insert([{ 
+          text: text.trim(), 
+          image_url, 
+          user_id: 'anonymous-user' 
+        }])
+        .select('id, text, image_url, created_at, user_id');
+      if (error) {
+        console.error('Error inserting dialog (anonymous):', error);
+        alert('Failed to save dialog: ' + error.message);
+        return;
+      }
+      if (data && data.length > 0) {
+        setDialogs([data[0], ...dialogs]);
+        setText("");
+        setImageFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
       return;
     }
     
