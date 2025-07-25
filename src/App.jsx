@@ -33,6 +33,20 @@ const hashPassword = (password) => {
 };
 
 function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    // Try to load from localStorage, else default to false
+    const saved = localStorage.getItem('dialog_dark_mode');
+    return saved === 'true';
+  });
+  // Update localStorage and document body class on darkMode change
+  useEffect(() => {
+    localStorage.setItem('dialog_dark_mode', darkMode);
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
   // Track previous dialogs for notification diff
   const prevDialogsRef = useReactRef([]);
   const [user, setUser] = useState(null);
@@ -374,19 +388,58 @@ function App() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      width: '100vw',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      padding: '3rem 0', // Add top and bottom padding
-      position: 'relative',
-      overflow: 'hidden',
-      boxSizing: 'border-box',
-    }}>
+    <div
+      className={darkMode ? 'dark-mode' : ''}
+      style={{
+        minHeight: '100vh',
+        width: '100vw',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: darkMode
+          ? 'linear-gradient(135deg, #181a20 0%, #23263a 100%)'
+          : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        padding: '3rem 0',
+        position: 'relative',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        transition: 'background 0.3s',
+      }}
+    >
+      {/* Dark mode toggle button */}
+      <button
+        onClick={() => setDarkMode((d) => !d)}
+        style={{
+          position: 'absolute',
+          top: 18,
+          right: 24,
+          zIndex: 10,
+          background: darkMode
+            ? 'linear-gradient(135deg, #23263a 0%, #181a20 100%)'
+            : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          color: darkMode ? '#fbbf24' : '#6366f1',
+          border: 'none',
+          borderRadius: '50%',
+          width: 44,
+          height: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 24,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        aria-label="Toggle dark mode"
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {darkMode ? (
+          <span role="img" aria-label="Sun">☀️</span>
+        ) : (
+          <span role="img" aria-label="Moon">🌙</span>
+        )}
+      </button>
       {/* Background decorative elements */}
       <div style={{
         position: 'absolute',
@@ -425,18 +478,21 @@ function App() {
       <div style={{
         width: '100%',
         maxWidth: window.innerWidth <= 480 ? '95%' : window.innerWidth <= 768 ? '90%' : 560,
-        height: window.innerWidth <= 480 ? 'calc(100vh - 4rem)' : 'calc(100vh - 6rem)', // Fixed height based on viewport
+        height: window.innerWidth <= 480 ? 'calc(100vh - 4rem)' : 'calc(100vh - 6rem)',
         display: 'flex',
         flexDirection: 'column',
         padding: window.innerWidth <= 480 ? '1.5rem' : window.innerWidth <= 768 ? '1.75rem' : '2rem',
         borderRadius: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 20 : 24,
-        background: 'rgba(255, 255, 255, 0.95)',
+        background: darkMode ? 'rgba(24,26,32,0.98)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(20px)',
-        boxShadow: '0 20px 60px 0 rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.3)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
+        boxShadow: darkMode
+          ? '0 20px 60px 0 rgba(0,0,0,0.35), 0 0 0 1px rgba(24,26,32,0.25)'
+          : '0 20px 60px 0 rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.3)',
+        border: darkMode ? '1px solid #23263a' : '1px solid rgba(255, 255, 255, 0.2)',
         margin: window.innerWidth <= 480 ? '0 0.5rem' : '0 1rem',
         position: 'relative',
-        overflow: 'hidden', // Hide overflow on the container
+        overflow: 'hidden',
+        transition: 'background 0.3s, box-shadow 0.3s, border 0.3s',
       }}>
         <div style={{
           display: 'flex',
