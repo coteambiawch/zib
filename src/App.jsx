@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useRef as useReactRef } from 'react';
+// Helper to show browser notification
+function showBrowserNotification(title, options) {
+  if (window.Notification && Notification.permission === 'granted') {
+    new Notification(title, options);
+  }
+}
 import { createClient } from '@supabase/supabase-js';
 import { AnimatePresence, motion } from 'framer-motion';
 import LoginPage from './LoginPage';
@@ -27,6 +33,8 @@ const hashPassword = (password) => {
 };
 
 function App() {
+  // Track previous dialogs for notification diff
+  const prevDialogsRef = useReactRef([]);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [text, setText] = useState("");
@@ -136,37 +144,46 @@ function App() {
       return;
     }
 
+    // Request notification permission on first load
+    if (window.Notification && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Helper to show notification for new dialogs
+    const maybeNotify = (newDialogs) => {
+      // Only notify if not first load and there are new dialogs
+      if (prevDialogsRef.current.length > 0 && newDialogs.length > 0) {
+        // Find the new dialog(s) by id
+        const prevIds = new Set(prevDialogsRef.current.map(d => d.id));
+        const newOnes = newDialogs.filter(d => !prevIds.has(d.id));
+        if (newOnes.length > 0) {
+          const latest = newOnes[0];
+          showBrowserNotification('New Dialog', {
+            body: latest.text ? latest.text.slice(0, 80) : 'A new dialog was added!',
+            icon: latest.image_url || undefined
+          });
+        }
+      }
+      prevDialogsRef.current = newDialogs;
+    };
+
     // For anonymous users, load all dialogs from database but don't save their own dialogs there
     if (user.isAnonymous) {
-      // Clear any old localStorage data
       localStorage.removeItem('permanent_anonymous_dialogs');
       localStorage.removeItem('anonymous_dialogs');
-      
-      // Fetch all dialogs from database for viewing (same as registered users)
       const fetchDialogs = async () => {
         try {
           const { data, error } = await supabase
             .from('demo-dialogs')
-            .select(`
-              id, 
-              text, 
-              image_url, 
-              created_at, 
-              user_id
-            `)
+            .select(`id, text, image_url, created_at, user_id`)
             .order('created_at', { ascending: false });
-          
           if (error) {
-            console.error('Error fetching dialogs for anonymous user:', error);
             setDialogs([]);
           } else {
-            console.log('Fetched dialogs for anonymous user:', data);
-            // Transform data to include user name
             const dialogsWithUserName = await Promise.all(data?.map(async (dialog) => {
               if (dialog.user_id === 'anonymous-user') {
                 return { ...dialog, user_name: 'Anonymous' };
               } else {
-                // Fetch user name from custom_users table
                 const { data: userData } = await supabase
                   .from('custom_users')
                   .select('name')
@@ -176,29 +193,20 @@ function App() {
               }
             }) || []);
             setDialogs(dialogsWithUserName);
+            maybeNotify(dialogsWithUserName);
           }
         } catch (err) {
-          console.error('Fetch error for anonymous user:', err);
           setDialogs([]);
         }
         setLoading(false);
       };
-      
       fetchDialogs();
-      
-      // Set up realtime subscription for anonymous users too
       const channel = supabase
         .channel('realtime-demo-dialogs-anonymous')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'demo-dialogs'
-        }, payload => {
-          console.log('Realtime change for anonymous user:', payload);
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'demo-dialogs' }, payload => {
           fetchDialogs();
         })
         .subscribe();
-
       return () => {
         supabase.removeChannel(channel);
       };
@@ -208,27 +216,15 @@ function App() {
       try {
         const { data, error } = await supabase
           .from('demo-dialogs')
-          .select(`
-            id, 
-            text, 
-            image_url, 
-            created_at, 
-            user_id
-          `)
-          // Remove user filter to show all dialogs
+          .select(`id, text, image_url, created_at, user_id`)
           .order('created_at', { ascending: false });
-        
         if (error) {
-          console.error('Error fetching dialogs:', error);
           setDialogs([]);
         } else {
-          console.log('Fetched dialogs:', data);
-          // Transform data to include user name
           const dialogsWithUserName = await Promise.all(data?.map(async (dialog) => {
             if (dialog.user_id === 'anonymous-user') {
               return { ...dialog, user_name: 'Anonymous' };
             } else {
-              // Fetch user name from custom_users table
               const { data: userData } = await supabase
                 .from('custom_users')
                 .select('name')
@@ -238,29 +234,20 @@ function App() {
             }
           }) || []);
           setDialogs(dialogsWithUserName);
+          maybeNotify(dialogsWithUserName);
         }
       } catch (err) {
-        console.error('Fetch error:', err);
         setDialogs([]);
       }
       setLoading(false);
     };
     fetchDialogs();
-
-    // Realtime subscription
     const channel = supabase
       .channel('realtime-demo-dialogs')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'demo-dialogs'
-        // Remove user filter to listen to all changes
-      }, payload => {
-        console.log('Realtime change:', payload);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo-dialogs' }, payload => {
         fetchDialogs();
       })
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
