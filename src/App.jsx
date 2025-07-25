@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
@@ -6,22 +6,25 @@ import './App.css';
 const supabaseUrl = 'https://frskdsglexjeehahmiow.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZyc2tkc2dsZXhqZWVoYWhtaW93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzODk4NzcsImV4cCI6MjA2ODk2NTg3N30.3ObYpFwg7WfYUy5KCzJfrLlAxJGTvoSlqnSeCAEOSnQ';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const BUCKET = 'dialog-photos'; // You must create this bucket in Supabase Storage
 
 function App() {
   const [text, setText] = useState("");
   const [dialogs, setDialogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(""); // <-- search state
+  const [search, setSearch] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const fileInputRef = useRef();
 
   // Fetch dialogs from Supabase on mount and subscribe to realtime changes
   useEffect(() => {
     const fetchDialogs = async () => {
       const { data, error } = await supabase
-        .from('dialogs')
-        .select('text')
+        .from('demo-dialogs')
+        .select('id, text, image_url')
         .order('id', { ascending: false });
       if (!error && data) {
-        setDialogs(data.map(d => d.text));
+        setDialogs(data);
       }
       setLoading(false);
     };
@@ -29,8 +32,8 @@ function App() {
 
     // Realtime subscription
     const channel = supabase
-      .channel('realtime-dialogs')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dialogs' }, payload => {
+      .channel('realtime-demo-dialogs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'demo-dialogs' }, payload => {
         fetchDialogs();
       })
       .subscribe();
@@ -41,21 +44,34 @@ function App() {
   }, []);
 
   const handleAdd = async () => {
-    if (text.trim() !== "") {
-      const { data, error } = await supabase
-        .from('dialogs')
-        .insert([{ text }])
-        .select();
-      if (!error && data && data.length > 0) {
-        setDialogs([data[0].text, ...dialogs]);
-        setText("");
+    if (text.trim() === "" && !imageFile) return;
+    let image_url = null;
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage.from(BUCKET).upload(fileName, imageFile);
+      if (uploadError) {
+        alert('Image upload failed.');
+        return;
       }
+      image_url = supabase.storage.from(BUCKET).getPublicUrl(fileName).data.publicUrl;
+    }
+    const { data, error } = await supabase
+      .from('demo-dialogs')
+      .insert([{ text, image_url }])
+      .select();
+    if (!error && data && data.length > 0) {
+      setDialogs([data[0], ...dialogs]);
+      setText("");
+      setImageFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Filter dialogs based on search
+  // Filter dialogs based on search (text or image_url)
   const filteredDialogs = dialogs.filter(d =>
-    d.toLowerCase().includes(search.toLowerCase())
+    (d.text && d.text.toLowerCase().includes(search.toLowerCase())) ||
+    (d.image_url && d.image_url.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -158,6 +174,9 @@ function App() {
         <div style={{
           marginBottom: 20,
           position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
         }}>
           <textarea
             value={text}
@@ -192,6 +211,25 @@ function App() {
             }}
             placeholder="✨ Share your thoughts, ideas, or anything worth remembering..."
           />
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={e => setImageFile(e.target.files[0])}
+            style={{
+              border: 'none',
+              background: 'none',
+              fontSize: 15,
+              color: '#6366f1',
+              marginTop: 4,
+            }}
+          />
+          {imageFile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#6366f1', fontSize: 14 }}>{imageFile.name}</span>
+              <button onClick={() => { setImageFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}>Remove</button>
+            </div>
+          )}
         </div>
         <button
           onClick={handleAdd}
@@ -227,14 +265,15 @@ function App() {
         </button>
         <button
           onClick={async () => {
-            if (
-              window.confirm(
-                'Are you sure you want to delete all dialogs? This cannot be undone.'
-              )
-            ) {
-              await supabase.from('dialogs').delete().neq('id', 0);
-              setDialogs([]);
+            const confirmed = window.confirm('Are you sure you want to delete all dialogs? This cannot be undone.');
+            if (!confirmed) return;
+            const password = window.prompt('Enter password to reset:');
+            if (password !== '12344321') {
+              window.alert('Incorrect password. Reset cancelled.');
+              return;
             }
+            await supabase.from('demo-dialogs').delete().neq('id', 0);
+            setDialogs([]);
           }}
           style={{
             marginBottom: 28,
@@ -354,7 +393,7 @@ function App() {
             <AnimatePresence>
               {filteredDialogs.map((dialog, idx) => (
                 <motion.div
-                  key={dialog + idx}
+                  key={(dialog.id || idx) + (dialog.text || '') + (dialog.image_url || '')}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -397,7 +436,16 @@ function App() {
                     borderRadius: '12px 12px 0 0',
                     opacity: 0.6,
                   }} />
-                  {dialog}
+                  {dialog.text && <div>{dialog.text}</div>}
+                  {dialog.image_url && (
+                    <img src={dialog.image_url} alt="dialog-img" style={{
+                      maxWidth: '100%',
+                      maxHeight: 220,
+                      borderRadius: 10,
+                      marginTop: dialog.text ? 10 : 0,
+                      boxShadow: '0 2px 8px rgba(99,102,241,0.10)'
+                    }} />
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
