@@ -33,6 +33,36 @@ const hashPassword = (password) => {
 };
 
 function App() {
+  // Notification permission state
+  const [notifStatus, setNotifStatus] = useState(() => {
+    if (typeof window !== 'undefined' && window.Notification) {
+      return Notification.permission;
+    }
+    return 'unsupported';
+  });
+  // Notification bar visibility
+  const [showNotifBar, setShowNotifBar] = useState(false);
+
+  // Ask for notification permission as soon as the app loads, or if denied, show info
+  useEffect(() => {
+    if (window.Notification) {
+      setNotifStatus(Notification.permission);
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then((perm) => {
+          setNotifStatus(perm);
+        });
+      }
+    }
+  }, []);
+
+  // Show/hide notification bar for 2 seconds when notifStatus is denied or unsupported
+  useEffect(() => {
+    if (notifStatus === 'denied' || notifStatus === 'unsupported') {
+      setShowNotifBar(true);
+      const timer = setTimeout(() => setShowNotifBar(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [notifStatus]);
   const [darkMode, setDarkMode] = useState(() => {
     // Try to load from localStorage, else default to false
     const saved = localStorage.getItem('dialog_dark_mode');
@@ -407,6 +437,132 @@ function App() {
         transition: 'background 0.3s',
       }}
     >
+      {/* Modern floating dark mode and reset buttons */}
+      <div style={{
+        position: 'fixed',
+        top: 18,
+        right: 18,
+        zIndex: 10001,
+        display: 'flex',
+        gap: 12,
+      }}>
+        <button
+          onClick={() => setDarkMode((d) => !d)}
+          style={{
+            background: darkMode
+              ? 'linear-gradient(135deg, #23263a 0%, #181a20 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            color: darkMode ? '#fbbf24' : '#6366f1',
+            border: 'none',
+            borderRadius: '50%',
+            width: 'clamp(44px, 7vw, 54px)',
+            height: 'clamp(44px, 7vw, 54px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(1.5rem, 3vw, 2.2rem)',
+            boxShadow: '0 4px 24px 0 rgba(99,102,241,0.18)',
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
+            outline: 'none',
+          }}
+          aria-label="Toggle dark mode"
+          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {darkMode ? (
+            <span role="img" aria-label="Sun">☀️</span>
+          ) : (
+            <span role="img" aria-label="Moon">🌙</span>
+          )}
+        </button>
+        <button
+          onClick={async () => {
+            if (user.isAnonymous) {
+              const confirmed = window.confirm('Are you sure you want to clear your session dialogs?');
+              if (!confirmed) return;
+              setDialogs([]);
+            } else {
+              const confirmed = window.confirm('⚠️ WARNING: This will delete ALL dialogs from ALL users! Are you absolutely sure?');
+              if (!confirmed) return;
+              const secondConfirm = window.confirm('This action cannot be undone and will affect everyone. Continue?');
+              if (!secondConfirm) return;
+              const password = window.prompt('Enter admin password to reset ALL dialogs:');
+              if (password !== '12344321') {
+                window.alert('Incorrect password. Reset cancelled.');
+                return;
+              }
+              await supabase.from('demo-dialogs').delete().neq('id', 0);
+              setDialogs([]);
+            }
+          }}
+          style={{
+            background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '50%',
+            width: 'clamp(44px, 7vw, 54px)',
+            height: 'clamp(44px, 7vw, 54px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'clamp(1.3rem, 2.5vw, 1.7rem)',
+            boxShadow: '0 4px 16px rgba(239, 68, 68, 0.18)',
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
+            outline: 'none',
+          }}
+          aria-label="Reset all dialogs"
+          title="Reset all dialogs"
+        >
+          🗑️
+        </button>
+      </div>
+      {/* Modern notification permission banner (below dark mode button) */}
+      {/* Notification bar with smooth fade and transparency */}
+      <AnimatePresence>
+        {showNotifBar && (notifStatus === 'denied' || notifStatus === 'unsupported') && (
+          <motion.div
+            initial={{ opacity: 1, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+              background: notifStatus === 'denied'
+                ? 'linear-gradient(90deg, rgba(248,113,113,0.85) 0%, rgba(239,68,68,0.85) 100%)'
+                : 'linear-gradient(90deg, rgba(251,191,36,0.85) 0%, rgba(253,230,138,0.85) 100%)',
+              color: notifStatus === 'denied' ? '#fff' : '#18181b',
+              fontWeight: 600,
+              fontSize: 'clamp(0.95rem, 2vw, 1.15rem)',
+              padding: 'clamp(10px, 2vw, 18px) clamp(12px, 4vw, 32px)',
+              zIndex: 9998,
+              boxShadow: notifStatus === 'denied'
+                ? '0 2px 12px 0 rgba(239,68,68,0.18)'
+                : '0 2px 12px 0 rgba(251,191,36,0.18)',
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
+              transition: 'background 0.25s cubic-bezier(.4,0,.2,1), opacity 0.5s',
+              margin: '0 auto',
+              maxWidth: 600,
+              backdropFilter: 'blur(8px)',
+              opacity: 1,
+            }}
+          >
+            <span style={{fontSize: '1.3em'}}>
+              {notifStatus === 'denied'
+                ? '🔒 Notifications are blocked. Enable them in your browser settings.'
+                : '⚠️ Browser notifications are not supported on this device or browser.'}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Dark mode toggle button */}
       <button
         onClick={() => setDarkMode((d) => !d)}
@@ -603,43 +759,43 @@ function App() {
             flexDirection: 'column',
             gap: 10,
           }}>
-            <textarea
-              value={text}
-              onChange={e => setText(e.target.value)}
-              rows={4}
-              style={{
-                width: '100%',
-                minHeight: 100,
-                maxHeight: 220,
-                padding: '16px 20px',
-                borderRadius: 12,
-                border: '2px solid #e2e8f0',
-                fontSize: 16,
-                background: '#f8fafc',
-                color: '#1e293b',
-                outline: 'none',
-                boxShadow: '0 4px 16px rgba(31, 38, 135, 0.06)',
-                transition: 'all 0.3s ease',
-                resize: 'vertical',
-                fontFamily: 'inherit',
-                lineHeight: 1.5,
-              }}
-              onFocus={(e) => {
-                e.target.style.border = '2px solid #6366f1';
-                e.target.style.boxShadow = '0 8px 24px rgba(99, 102, 241, 0.15)';
-                e.target.style.background = '#ffffff';
-              }}
-              onBlur={(e) => {
-                e.target.style.border = '2px solid #e2e8f0';
-                e.target.style.boxShadow = '0 4px 16px rgba(31, 38, 135, 0.06)';
-                e.target.style.background = '#f8fafc';
-              }}
-              placeholder="✨ Share your thoughts, ideas, or anything worth remembering..."
-            />
             <div style={{
               position: 'relative',
-              marginTop: 8,
+              width: '100%',
+              background: '#fff',
+              borderRadius: 24,
+              boxShadow: '0 2px 16px 0 rgba(0,0,0,0.07)',
+              border: '1.5px solid #e5e7eb',
+              padding: '0.5rem 0.75rem',
+              display: 'flex',
+              alignItems: 'flex-end',
+              minHeight: 64,
+              marginBottom: 2,
+              transition: 'box-shadow 0.2s',
             }}>
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value)}
+                rows={2}
+                style={{
+                  flex: 1,
+                  minHeight: 40,
+                  maxHeight: 120,
+                  border: 'none',
+                  outline: 'none',
+                  resize: 'none',
+                  fontSize: 16,
+                  fontFamily: 'inherit',
+                  background: 'transparent',
+                  color: '#222',
+                  padding: '0.5rem 2.5rem 0.5rem 2.5rem',
+                  borderRadius: 18,
+                  lineHeight: 1.5,
+                  boxShadow: 'none',
+                  transition: 'background 0.2s',
+                }}
+              />
+              {/* Image button moved to the right, next to send button, with SVG icon */}
               <input
                 type="file"
                 accept="image/*"
@@ -647,187 +803,172 @@ function App() {
                 onChange={e => setImageFile(e.target.files[0])}
                 style={{
                   position: 'absolute',
+                  right: 82,
+                  bottom: 10,
+                  width: 44,
+                  height: 44,
                   opacity: 0,
-                  width: '100%',
-                  height: '100%',
                   cursor: 'pointer',
+                  zIndex: 3
                 }}
-                id="file-upload"
+                id="file-upload-inside"
               />
               <label
-                htmlFor="file-upload"
+                htmlFor="file-upload-inside"
                 style={{
+                  position: 'absolute',
+                  right: 82,
+                  bottom: 10,
+                  width: 44,
+                  height: 44,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '12px 16px',
-                  borderRadius: 10,
-                  border: '2px dashed #d1d5db',
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                  color: '#6366f1',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  textAlign: 'center',
                   justifyContent: 'center',
-                  letterSpacing: '0.3px',
+                  background: 'linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%)',
+                  border: '1.5px solid #e5e7eb',
+                  borderRadius: '50%',
+                  color: '#8b5cf6',
+                  fontSize: 20,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 4px rgba(139,92,246,0.07)',
+                  zIndex: 2,
+                  transition: 'background 0.18s, border 0.18s',
+                  gap: 0
                 }}
-                onMouseEnter={(e) => {
-                  e.target.style.border = '2px dashed #6366f1';
-                  e.target.style.background = 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)';
-                  e.target.style.transform = 'translateY(-1px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+                title="Add image"
+                onMouseEnter={e => {
+                  e.target.style.background = '#f3e8ff';
+                  e.target.style.border = '1.5px solid #a78bfa';
                 }}
-                onMouseLeave={(e) => {
-                  e.target.style.border = '2px dashed #d1d5db';
-                  e.target.style.background = 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)';
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = 'none';
+                onMouseLeave={e => {
+                  e.target.style.background = 'linear-gradient(135deg, #fafafa 0%, #f1f5f9 100%)';
+                  e.target.style.border = '1.5px solid #e5e7eb';
                 }}
               >
-                <span style={{ fontSize: 16 }}>📷</span>
-                {imageFile ? `Selected: ${imageFile.name}` : 'Click to add image'}
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="7" width="18" height="12" rx="3" fill="#fff" stroke="#8b5cf6" strokeWidth="1.5"/>
+                  <circle cx="12" cy="13" r="3.2" fill="#f3e8ff" stroke="#8b5cf6" strokeWidth="1.5"/>
+                  <rect x="8.5" y="4" width="7" height="3" rx="1.5" fill="#fafafa" stroke="#8b5cf6" strokeWidth="1.5"/>
+                  <rect x="6.5" y="2.5" width="3" height="3" rx="1.5" fill="#8b5cf6" stroke="#8b5cf6" strokeWidth="1.2"/>
+                </svg>
               </label>
+              {/* Add dialog button styled like Instagram send */}
+              <button
+                onClick={handleAdd}
+                style={{
+                  position: 'absolute',
+                  bottom: 10,
+                  right: 10,
+                  background: 'transparent',
+                  color: '#8b5cf6',
+                  border: '2px solid #8b5cf6',
+                  borderRadius: 22,
+                  width: 60,
+                  height: 44,
+                  minWidth: 56,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 20,
+                  boxShadow: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.18s, color 0.18s, border 0.18s',
+                  zIndex: 2,
+                  outline: 'none',
+                  gap: 5,
+                  padding: '0 12px',
+                }}
+                aria-label="Add Dialog"
+                title="Add Dialog (Ctrl+Enter)"
+                onMouseEnter={e => {
+                  e.target.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #fbbf24 100%)';
+                }}
+                onMouseLeave={e => {
+                  e.target.style.background = 'linear-gradient(135deg, #fbbf24 0%, #8b5cf6 100%)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', gap: 6 }}>
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                    <path d="M3 17L17 10L3 3V8.5L13 10L3 11.5V17Z" fill="currentColor"/>
+                  </svg>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: '#000', letterSpacing: '0.2px', userSelect: 'none', lineHeight: 1, display: 'block' }}>Send</span>
+                </div>
+              </button>
             </div>
+            {/* Removed old add image input/label, now inside textarea */}
             {imageFile && (
               <div style={{
                 marginTop: 8,
-                padding: '8px 12px',
+                padding: '7px 8px 7px 10px',
                 borderRadius: 8,
-                background: 'rgba(99, 102, 241, 0.1)',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
+                background: 'rgba(99, 102, 241, 0.06)',
+                border: '1px solid #a5b4fc',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                maxWidth: 200,
+                boxShadow: '0 1px 4px rgba(99,102,241,0.07)',
               }}>
-                <span style={{ 
-                  color: '#6366f1', 
-                  fontSize: 13,
-                  fontWeight: 500,
-                  flex: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  📎 {imageFile.name}
-                </span>
-                <button 
-                  onClick={() => { 
-                    setImageFile(null); 
-                    if (fileInputRef.current) fileInputRef.current.value = ""; 
-                  }} 
-                  style={{ 
-                    color: '#ef4444', 
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                    borderRadius: 6,
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: 12,
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <span style={{ 
+                    color: '#6366f1', 
+                    fontSize: 11,
                     fontWeight: 500,
-                    transition: 'all 0.2s ease',
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    📎 {imageFile.name}
+                  </span>
+                  <button 
+                    onClick={() => { 
+                      setImageFile(null); 
+                      if (fileInputRef.current) fileInputRef.current.value = ""; 
+                    }} 
+                    style={{ 
+                      color: '#ef4444', 
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: 5,
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      marginLeft: 6,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = 'rgba(239, 68, 68, 0.15)';
+                      e.target.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'rgba(239, 68, 68, 0.1)';
+                      e.target.style.transform = 'scale(1)';
+                    }}
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+                {/* Image preview */}
+                <img
+                  src={URL.createObjectURL(imageFile)}
+                  alt="preview"
+                  style={{
+                    marginTop: 7,
+                    maxWidth: 120,
+                    maxHeight: 80,
+                    borderRadius: 7,
+                    border: '1px solid #6366f1',
+                    boxShadow: '0 1px 4px rgba(99,102,241,0.08)',
+                    objectFit: 'cover',
                   }}
-                  onMouseEnter={(e) => {
-                    e.target.style.background = 'rgba(239, 68, 68, 0.15)';
-                    e.target.style.transform = 'scale(1.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.background = 'rgba(239, 68, 68, 0.1)';
-                    e.target.style.transform = 'scale(1)';
-                  }}
-                >
-                  ✕ Remove
-                </button>
+                />
               </div>
             )}
           </div>
-          <button
-            onClick={handleAdd}
-            style={{
-              marginBottom: 16,
-              padding: window.innerWidth <= 480 ? '16px 0' : window.innerWidth <= 768 ? '18px 0' : '20px 0',
-              width: '100%',
-              borderRadius: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
-              border: 'none',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 17 : 18,
-              boxShadow: '0 4px 16px rgba(99, 102, 241, 0.2)',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              letterSpacing: '0.5px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 16px rgba(99, 102, 241, 0.2)';
-            }}
-          >
-            <span style={{ position: 'relative', zIndex: 1 }}>
-              ✨ Add Dialog
-            </span>
-          </button>
-          <button
-            onClick={async () => {
-              if (user.isAnonymous) {
-                // Simpler flow for anonymous users
-                const confirmed = window.confirm('Are you sure you want to clear your session dialogs?');
-                if (!confirmed) return;
-                setDialogs([]);
-              } else {
-                // More secure flow for registered users affecting database
-                const confirmed = window.confirm('⚠️ WARNING: This will delete ALL dialogs from ALL users! Are you absolutely sure?');
-                if (!confirmed) return;
-                const secondConfirm = window.confirm('This action cannot be undone and will affect everyone. Continue?');
-                if (!secondConfirm) return;
-                const password = window.prompt('Enter admin password to reset ALL dialogs:');
-                if (password !== '12344321') {
-                  window.alert('Incorrect password. Reset cancelled.');
-                  return;
-                }
-                
-                // Clear ALL dialogs from database (affects all users)
-                await supabase.from('demo-dialogs').delete().neq('id', 0); // Delete all records
-                setDialogs([]);
-              }
-            }}
-            style={{
-              marginBottom: 28,
-              padding: window.innerWidth <= 480 ? '16px 0' : window.innerWidth <= 768 ? '18px 0' : '20px 0',
-              width: '100%',
-              borderRadius: window.innerWidth <= 480 ? 8 : window.innerWidth <= 768 ? 10 : 12,
-              border: 'none',
-              background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: window.innerWidth <= 480 ? 16 : window.innerWidth <= 768 ? 17 : 18,
-              boxShadow: '0 4px 16px rgba(239, 68, 68, 0.2)',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              letterSpacing: '0.5px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 8px 25px rgba(239, 68, 68, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 16px rgba(239, 68, 68, 0.2)';
-            }}
-          >
-            <span style={{ position: 'relative', zIndex: 1 }}>
-              🗑️ Reset All
-            </span>
-          </button>
+          {/* Removed duplicated Reset All button below the text area */}
           <input
             type="text"
             value={search}

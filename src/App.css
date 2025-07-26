@@ -1,3 +1,34 @@
+/* Send button modern style */
+.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #fbbf24 0%, #8b5cf6 100%);
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  width: 60px;
+  height: 44px;
+  min-width: 56px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.16);
+  gap: 6px;
+  padding: 0 12px;
+  position: relative;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+  outline: none;
+  z-index: 2;
+}
+.send-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #fbbf24 100%);
+  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.22);
+  transform: translateY(-2px) scale(1.04);
+}
+.send-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 6px rgba(139, 92, 246, 0.10);
+}
 #root {
   min-height: 100vh;
   min-width: 100vw;
@@ -31,99 +62,3 @@ html, body {
 @keyframes spin {
   0% {
     transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-/* Button hover effects */
-.btn-primary {
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
-}
-
-.btn-primary:hover::before {
-  left: 100%;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #5855eb, #7c3aed);
-}
-
-/* Responsive design improvements */
-@media (max-width: 768px) {
-  .container {
-    padding: 1rem !important;
-    margin: 0 0.5rem !important;
-  }
-  
-  .title {
-    font-size: 24px !important;
-  }
-  
-  .dialog-item {
-    padding: 12px 16px !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 0.75rem !important;
-    margin: 0 0.25rem !important;
-  }
-  
-  .title {
-    font-size: 20px !important;
-  }
-  
-  .input-field, .button {
-    font-size: 14px !important;
-  }
-}
